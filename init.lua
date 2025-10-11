@@ -28,16 +28,26 @@ require("lazy").setup({
   spec = {
     -- add your plugins here
     {
-      'nvim-telescope/telescope.nvim',
+      'nvim-telescope/telescope.nvim', -- fuzzy finder support
       tag = '0.1.8',
       dependencies = { 'nvim-lua/plenary.nvim' }
     },
     {
-      "nvim-treesitter/nvim-treesitter"
+      "nvim-treesitter/nvim-treesitter" -- linting support
     },
     {
-      "tpope/vim-fugitive"
+      "tpope/vim-fugitive" -- git support
     },
+    { "neovim/nvim-lspconfig" }, -- core LSP support
+
+    -- Autocompletion start
+    { "hrsh7th/cmp-nvim-lsp" }, -- LSP source for nvim-cmp
+    {'hrsh7th/cmp-buffer'},
+    {'hrsh7th/cmp-path'},
+    {'hrsh7th/cmp-cmdline'},
+    {'hrsh7th/nvim-cmp'},
+    -- Autocompletion end
+
   },
   -- Configure any other settings here. See the documentation for more details.
   -- colorscheme that will be used when installing plugins.
@@ -46,9 +56,63 @@ require("lazy").setup({
   checker = { enabled = true },
 })
 
+-- Default keymaps on LSP attach
+local on_attach = function(_, bufnr)
+  local map = function(mode, lhs, rhs)
+    vim.keymap.set(mode, lhs, rhs, { buffer = bufnr })
+  end
+
+  print("here")
+  map("n", "gd", vim.lsp.buf.definition)
+  map("n", "gr", vim.lsp.buf.references)
+  map("n", "K", vim.lsp.buf.hover)
+  map("n", "<leader>rn", vim.lsp.buf.rename)
+  map("n", "<leader>ca", vim.lsp.buf.code_action)
+end
+
+vim.lsp.config('clangd', { -- c++
+  on_attach = on_attach,
+  autostart = true,
+})
+
+vim.lsp.config('rust_analyzer', {
+  on_attach = on_attach,
+  cmd = { "/opt/homebrew/bin/rust-analyzer" }, -- if needed
+  autostart = true,
+})
+
+vim.lsp.config('jdtls', { -- java
+  on_attach = on_attach,
+  autostart = true,
+})
+
+local lua_runtime = vim.api.nvim_get_runtime_file("*.lua", true)
+vim.lsp.config("lua_ls", {
+  on_attach = on_attach,
+  autostart = true,
+  -- settings for enabling vim variable
+  settings = {
+    Lua = {
+      runtime = { version = "LuaJIT" },
+      diagnostics = { globals = { "vim" } },
+      workspace = {
+        library = lua_runtime,
+        checkThirdParty = false,
+      },
+      telemetry = { enable = false },
+    },
+  },
+})
+
+vim.lsp.enable("clangd")
+vim.lsp.enable("rust_analyzer")
+vim.lsp.enable("jdtls")
+vim.lsp.enable("lua_ls")
+
 -- Telescope
 local builtinTelescope = require('telescope.builtin')
 vim.keymap.set('n', '<leader>ff', builtinTelescope.find_files, { desc = 'Telescope find files' })
 vim.keymap.set('n', '<leader>fg', builtinTelescope.live_grep, { desc = 'Telescope live grep' })
 vim.keymap.set('n', '<leader>fb', builtinTelescope.buffers, { desc = 'Telescope buffers' })
 vim.keymap.set('n', '<leader>fh', builtinTelescope.help_tags, { desc = 'Telescope help tags' })
+
