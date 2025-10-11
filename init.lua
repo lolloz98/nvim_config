@@ -1,19 +1,24 @@
 vim.cmd("set number relativenumber")
+vim.opt.expandtab = true
+vim.opt.tabstop = 4     -- a tab character is displayed as 4 spaces
+vim.opt.shiftwidth = 4  -- indentation amount for `>>` and autoindent
+vim.opt.softtabstop = 4 -- how many spaces a <Tab> counts for while editing
+
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
-  local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
-  if vim.v.shell_error ~= 0 then
-    vim.api.nvim_echo({
-      { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-      { out,                            "WarningMsg" },
-      { "\nPress any key to exit..." },
-    }, true, {})
-    vim.fn.getchar()
-    os.exit(1)
-  end
+    local lazyrepo = "https://github.com/folke/lazy.nvim.git"
+    local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+    if vim.v.shell_error ~= 0 then
+        vim.api.nvim_echo({
+            { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
+            { out,                            "WarningMsg" },
+            { "\nPress any key to exit..." },
+        }, true, {})
+        vim.fn.getchar()
+        os.exit(1)
+    end
 end
 vim.opt.rtp:prepend(lazypath)
 
@@ -25,121 +30,136 @@ vim.g.maplocalleader = "\\"
 
 -- Setup lazy.nvim
 require("lazy").setup({
-  spec = {
-    {
-      'nvim-telescope/telescope.nvim', -- fuzzy finder support
-      tag = '0.1.8',
-      dependencies = { 'nvim-lua/plenary.nvim' }
-    },
-    {
-      "nvim-treesitter/nvim-treesitter" -- linting support
-    },
-    {
-      "tpope/vim-fugitive"       -- git support
-    },
-    { "neovim/nvim-lspconfig" }, -- core LSP support
+    spec = {
+        {
+            'nvim-telescope/telescope.nvim', -- fuzzy finder support
+            tag = '0.1.8',
+            dependencies = { 'nvim-lua/plenary.nvim' }
+        },
+        {
+            "nvim-treesitter/nvim-treesitter" -- linting support
+        },
+        {
+            "tpope/vim-fugitive"     -- git support
+        },
+        { "neovim/nvim-lspconfig" }, -- core LSP support
 
-    -- Autocompletion start
-    { "hrsh7th/cmp-nvim-lsp" }, -- LSP source for nvim-cmp
-    { 'hrsh7th/cmp-buffer' },
-    { 'hrsh7th/cmp-path' },
-    { 'hrsh7th/cmp-cmdline' },
-    { 'hrsh7th/nvim-cmp' },
-    -- Autocompletion end
+        -- Autocompletion start
+        { "hrsh7th/cmp-nvim-lsp" }, -- LSP source for nvim-cmp
+        { 'hrsh7th/cmp-buffer' },
+        { 'hrsh7th/cmp-path' },
+        { 'hrsh7th/cmp-cmdline' },
+        { 'hrsh7th/nvim-cmp' },
+        -- Autocompletion end
 
-    -- Configure any other settings here. See the documentation for more details.
-    -- colorscheme that will be used when installing plugins.
-    { "ellisonleao/gruvbox.nvim", priority = 1000,  config = true },
-    install = { colorscheme = { "habamax" } },
-    -- automatically check for plugin updates
-    checker = { enabled = true },
-  },
+        {
+            "numToStr/Comment.nvim",
+            config = function()
+                require('Comment').setup({
+                    -- optional, default keymaps are fine
+                    toggler = {
+                        line = '<C-_>',
+                        block = '<C-\\>'
+                    },
+                    opleader = {
+                        line = '<C-_>',
+                        block = '<C-\\>'
+                    }
+                })
+            end,
+        },
+
+        -- Configure any other settings here. See the documentation for more details.
+        -- colorscheme that will be used when installing plugins.
+        install = { colorscheme = { "habamax" } },
+        -- automatically check for plugin updates
+        checker = { enabled = true },
+    },
 })
-
-
 
 -- Default keymaps on LSP attach
 local on_attach = function(_, bufnr)
-  local map = function(mode, lhs, rhs)
-    vim.keymap.set(mode, lhs, rhs, { buffer = bufnr })
-  end
+    local map = function(mode, lhs, rhs)
+        vim.keymap.set(mode, lhs, rhs, { buffer = bufnr })
+    end
 
-  map("n", "gd", vim.lsp.buf.definition)
-  map("n", "gr", vim.lsp.buf.references)
-  map("n", "K", vim.lsp.buf.hover)
-  map("n", "<leader>rn", vim.lsp.buf.rename)
-  map("n", "<leader>ca", vim.lsp.buf.code_action)
+    map("n", "gd", vim.lsp.buf.definition)
+    map("n", "gr", vim.lsp.buf.references)
+    map("n", "K", vim.lsp.buf.hover)
+    map("n", "<leader>rn", vim.lsp.buf.rename)
+    map("n", "<leader>ca", vim.lsp.buf.code_action)
+    map("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end)
 end
 
 local cmp = require("cmp")
 
 cmp.setup({
-  snippet = {
-    expand = function(args)
-      -- Using LuaSnip or any snippet engine if installed
-      -- require('luasnip').lsp_expand(args.body)
-    end,
-  },
-  mapping = cmp.mapping.preset.insert({
-    ["<C-n>"] = cmp.mapping.select_next_item(),         -- next suggestion
-    ["<C-p>"] = cmp.mapping.select_prev_item(),         -- prev suggestion
-    ["<tab>"] = cmp.mapping.confirm({ select = true }), -- enter to confirm
-    ["<CR>"] = cmp.mapping.complete(),                  -- trigger completion
-  }),
-  sources = cmp.config.sources({
-    { name = "nvim_lsp" }, -- LSP completions
-    { name = "buffer" },   -- current buffer
-    { name = "path" },     -- file paths
-    { name = "cmdline" },  -- command line completion
-  }),
+    snippet = {
+        expand = function(args)
+            -- Using LuaSnip or any snippet engine if installed
+            -- require('luasnip').lsp_expand(args.body)
+        end,
+    },
+    mapping = cmp.mapping.preset.insert({
+        ["<C-n>"] = cmp.mapping.select_next_item(),         -- next suggestion
+        ["<C-p>"] = cmp.mapping.select_prev_item(),         -- prev suggestion
+        ["<tab>"] = cmp.mapping.confirm({ select = true }), -- enter to confirm
+        -- ["<CR>"] = cmp.mapping.complete(),                  -- trigger completion
+    }),
+    sources = cmp.config.sources({
+        { name = "nvim_lsp" }, -- LSP completions
+        { name = "buffer" },   -- current buffer
+        { name = "path" },     -- file paths
+        { name = "cmdline" },  -- command line completion
+    }),
 })
 
 -- Enable completion for command-line mode too (optional)
 cmp.setup.cmdline("/", {
-  sources = { { name = "buffer" } }
+    sources = { { name = "buffer" } }
 })
 cmp.setup.cmdline(":", {
-  sources = cmp.config.sources({ { name = "path" } }, { { name = "cmdline" } })
+    sources = cmp.config.sources({ { name = "path" } }, { { name = "cmdline" } })
 })
 
 local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
 vim.lsp.config('clangd', { -- c++
-  on_attach = on_attach,
-  autostart = true,
-  capabilities = capabilities,
+    on_attach = on_attach,
+    autostart = true,
+    capabilities = capabilities,
 })
 
 vim.lsp.config('rust_analyzer', {
-  on_attach = on_attach,
-  cmd = { "/opt/homebrew/bin/rust-analyzer" }, -- if needed
-  autostart = true,
-  capabilities = capabilities,
+    on_attach = on_attach,
+    cmd = { "/opt/homebrew/bin/rust-analyzer" }, -- if needed
+    autostart = true,
+    capabilities = capabilities,
 })
 
 vim.lsp.config('jdtls', { -- java
-  on_attach = on_attach,
-  autostart = true,
-  capabilities = capabilities,
+    on_attach = on_attach,
+    autostart = true,
+    capabilities = capabilities,
 })
 
 local lua_runtime = vim.api.nvim_get_runtime_file("*.lua", true)
 vim.lsp.config("lua_ls", {
-  on_attach = on_attach,
-  autostart = true,
-  capabilities = capabilities,
-  -- settings for enabling vim variable
-  settings = {
-    Lua = {
-      runtime = { version = "LuaJIT" },
-      diagnostics = { globals = { "vim" } },
-      workspace = {
-        library = lua_runtime,
-        checkThirdParty = false,
-      },
-      telemetry = { enable = false },
+    on_attach = on_attach,
+    autostart = true,
+    capabilities = capabilities,
+    -- settings for enabling vim variable
+    settings = {
+        Lua = {
+            runtime = { version = "LuaJIT" },
+            diagnostics = { globals = { "vim" } },
+            workspace = {
+                library = lua_runtime,
+                checkThirdParty = false,
+            },
+            telemetry = { enable = false },
+        },
     },
-  },
 })
 
 vim.lsp.enable("clangd")
@@ -153,3 +173,5 @@ vim.keymap.set('n', '<leader>ff', builtinTelescope.find_files, { desc = 'Telesco
 vim.keymap.set('n', '<leader>fg', builtinTelescope.live_grep, { desc = 'Telescope live grep' })
 vim.keymap.set('n', '<leader>fb', builtinTelescope.buffers, { desc = 'Telescope buffers' })
 vim.keymap.set('n', '<leader>fh', builtinTelescope.help_tags, { desc = 'Telescope help tags' })
+
+vim.cmd("colorscheme habamax")
